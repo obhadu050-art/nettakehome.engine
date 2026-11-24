@@ -88,4 +88,493 @@
                         <option value="custom">Custom Platform Percentage...</option>
                     </select>
                     <div id="customPlatformBox" class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hidden">
-                        <div class="flex justify-between text-xs
+                        <div class="flex justify-between text-xs text-slate-700 mb-1">
+                            <span>Custom Fee:</span>
+                            <span id="customPlatformVal" class="font-bold text-emerald-600">5%</span>
+                        </div>
+                        <input type="range" id="customPlatformSlider" min="0" max="30" value="5" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="gatewaySelect" class="block text-xs font-semibold text-slate-600 uppercase mb-2">3. Withdrawal Gateway</label>
+                    <select id="gatewaySelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm font-medium outline-none">
+                        <option value="wise" selected>Wise / Skydo (Real Mid-Market Rate ~0.5% Fee)</option>
+                        <option value="bankwire">Direct Bank Wire (SWIFT Fee + ~1.8% FX Loss)</option>
+                        <option value="payoneer">Payoneer (Medium FX Spread ~2.0%)</option>
+                        <option value="paypal">PayPal (High FX Spread ~3.5% + Fees)</option>
+                        <option value="custom">Custom FX Spread Adjustment...</option>
+                    </select>
+                    <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="flex justify-between text-xs text-slate-700 mb-1">
+                            <span>Gateway FX Rate Loss (Spread):</span>
+                            <span id="fxSpreadLabel" class="font-bold text-amber-600">0.5%</span>
+                        </div>
+                        <input type="range" id="fxSpreadSlider" min="0.2" max="6.0" step="0.1" value="0.5" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="taxSelect" class="block text-xs font-semibold text-slate-600 uppercase mb-2">4. Tax & Local TDS Rules</label>
+                    <select id="taxSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm font-medium outline-none">
+                        <option value="in-tds-1" selected>India: Sec 194-O TDS (1% Deducted at Source)</option>
+                        <option value="in-gst-tds">India: 1% TDS + 18% GST on Platform Fee (~2.8%)</option>
+                        <option value="in-44ada">India: Presumptive Tax (Sec 44ADA ~5% Est.)</option>
+                        <option value="us-self">US / Global: Self-Employment Est. (15%)</option>
+                        <option value="none">Zero Tax / Exempt / Already Handled (0%)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="hoursSlider" class="text-xs font-semibold text-slate-600 uppercase">5. Weekly Hours Worked (Optional)</label>
+                        <span id="hoursVal" class="text-xs font-bold text-emerald-600">20 hrs</span>
+                    </div>
+                    <input type="range" id="hoursSlider" min="1" max="60" value="20" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Right Results -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-6">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-widest text-emerald-600">Final Net Cash In Hand</p>
+                            <h2 id="netTakeHomeINR" class="text-3xl sm:text-5xl font-black text-slate-900 mt-1">₹0</h2>
+                            <p class="text-xs text-slate-500 mt-1">Net deposited in bank (<span id="netTakeHomeForeign">$0.00</span> <span id="netCurrencyCode">USD</span>)</p>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-center min-w-[140px]">
+                            <p class="text-[10px] uppercase font-bold text-slate-500">Real Hourly Rate</p>
+                            <p id="realHourlyRate" class="text-xl font-bold text-indigo-600 mt-0.5">$0.00 / hr</p>
+                            <span class="text-[10px] text-slate-500">Gross: <span id="grossHourly">$0.00</span>/hr</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <div class="flex justify-between text-xs text-slate-600 mb-2 font-medium">
+                            <span>Payout Retention Breakdown</span>
+                            <span id="retentionPercent" class="text-emerald-600 font-bold">0% Retained</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex border border-slate-200">
+                            <div id="barTakeHome" class="bg-emerald-500 h-full" style="width: 75%"></div>
+                            <div id="barPlatform" class="bg-indigo-500 h-full" style="width: 10%"></div>
+                            <div id="barFx" class="bg-rose-500 h-full" style="width: 10%"></div>
+                            <div id="barTax" class="bg-amber-500 h-full" style="width: 5%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                        <h3 class="font-bold text-slate-900 text-sm">Deduction Summary</h3>
+                        <div class="flex items-center gap-3">
+                            <span id="baseRateSummary" class="text-xs text-slate-500">Base Rate: ₹93.00 / USD</span>
+                            <button type="button" id="exportCsvBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-lg border border-slate-300">
+                                📥 Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span>Gross Invoice Billed:</span>
+                            <span class="font-bold text-slate-900"><span id="outGrossUSD">$0.00</span> (<span id="outGrossINR">₹0</span>)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Platform Commission (<span id="outPlatformPct">0%</span>):</span>
+                            <span class="font-bold text-rose-600">-<span id="outPlatformUSD">$0.00</span> (-<span id="outPlatformINR">₹0</span>)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Hidden FX Rate Spread Loss (<span id="outFxPct">0%</span>):</span>
+                            <span class="font-bold text-rose-600">-<span id="outFxUSD">$0.00</span> (-<span id="outFxINR">₹0</span>)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Local Tax / TDS Cut:</span>
+                            <span class="font-bold text-amber-600">-<span id="outTaxUSD">$0.00</span> (-<span id="outTaxINR">₹0</span>)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <h3 class="font-bold text-slate-900 text-sm">Instant Gateway Payout Comparison</h3>
+                        <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">For Same Invoice</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-100">
+                                    <th class="pb-2 font-semibold">Method</th>
+                                    <th class="pb-2 font-semibold">FX Loss</th>
+                                    <th class="pb-2 font-semibold">Net INR</th>
+                                    <th class="pb-2 font-semibold text-right">Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm">
+                    <h4 class="font-bold text-slate-900 text-sm">
+                        ⚠️ You lose <span id="lossAlertINR" class="text-rose-600 font-black">₹0</span> per payout to FX Markup!
+                    </h4>
+                    <p class="text-xs text-slate-600 mt-1.5">
+                        Switching to mid-market options like <strong>Wise</strong> or <strong>Skydo</strong> saves up to <strong id="potentialSavingsINR" class="text-emerald-700">₹0</strong> per invoice.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <section class="mt-12 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-bold text-slate-900 mb-1">Popular Freelancer Fee & FX Scenarios</h2>
+            <p class="text-xs text-slate-500 mb-4">Click any scenario below to load it into the calculator:</p>
+            <div id="pseoPresetGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs"></div>
+        </section>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 text-center">
+        <div class="space-x-4 mb-2">
+            <a href="/salary-slabs.html" class="hover:text-emerald-600 font-semibold">Salary Slabs</a>
+            <a href="/sitemap.xml" class="hover:text-emerald-600 font-semibold">Sitemap</a>
+        </div>
+        <p>© 2026 NetTakeHome.engine. All rights reserved.</p>
+    </footer>
+
+    <script>
+        var RATES_TO_INR = { USD: 93.00, EUR: 100.50, GBP: 118.20, AUD: 61.00, CAD: 66.50 };
+        var FX_CACHE_KEY = 'nthe_fx_cache_v4';
+        var FX_TTL_MS = 4 * 60 * 60 * 1000;
+
+        var GATEWAY_SPREADS = {
+            wise: 0.5,
+            bankwire: 1.8,
+            payoneer: 2.0,
+            paypal: 3.5,
+            custom: 1.5
+        };
+
+        var TAX_MAP = {
+            'in-tds-1': 0.01,
+            'in-gst-tds': 0.028,
+            'in-44ada': 0.05,
+            'us-self': 0.15,
+            'none': 0
+        };
+
+        var SCENARIOS = [
+            { title: 'Upwork + Wise (India TDS)', amount: 1500, currency: 'USD', platform: '10', gateway: 'wise', spread: 0.5, tax: 'in-tds-1', hours: 20 },
+            { title: 'Upwork + PayPal (High FX)', amount: 1500, currency: 'USD', platform: '10', gateway: 'paypal', spread: 3.5, tax: 'in-tds-1', hours: 20 },
+            { title: 'Fiverr + Payoneer (20% Fee)', amount: 1000, currency: 'USD', platform: '20', gateway: 'payoneer', spread: 2.0, tax: 'in-tds-1', hours: 15 },
+            { title: 'Direct Client + Wise (0% Fee)', amount: 2500, currency: 'USD', platform: '0', gateway: 'wise', spread: 0.5, tax: 'in-44ada', hours: 25 },
+            { title: 'EUR Client + Bank Wire', amount: 1200, currency: 'EUR', platform: '0', gateway: 'bankwire', spread: 1.8, tax: 'in-tds-1', hours: 20 },
+            { title: 'GBP Client + Wise', amount: 1000, currency: 'GBP', platform: '10', gateway: 'wise', spread: 0.5, tax: 'in-tds-1', hours: 20 }
+        ];
+
+        function symFor(code) {
+            return { USD: '$', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$' }[code] || '$';
+        }
+
+        function moneyINR(val) {
+            var n = Number(val);
+            if (!isFinite(n)) n = 0;
+            return '₹' + Math.round(n).toLocaleString('en-IN');
+        }
+
+        function moneyForeign(val, sym) {
+            var n = Number(val);
+            if (!isFinite(n)) n = 0;
+            return sym + n.toFixed(2);
+        }
+
+        function runNumbers(gross, platPct, fxPct, taxRate, rate) {
+            var platFee = gross * (platPct / 100);
+            var afterPlat = Math.max(0, gross - platFee);
+            var fxLoss = afterPlat * (fxPct / 100);
+            var afterFx = Math.max(0, afterPlat - fxLoss);
+            var taxCut = gross * taxRate;
+            var netForeign = Math.max(0, afterFx - taxCut);
+            return {
+                gross: gross,
+                grossINR: gross * rate,
+                platFee: platFee,
+                platINR: platFee * rate,
+                fxLoss: fxLoss,
+                fxINR: fxLoss * rate,
+                taxCut: taxCut,
+                taxINR: taxCut * rate,
+                netForeign: netForeign,
+                netINR: netForeign * rate
+            };
+        }
+
+        function calculate() {
+            var currEl = document.getElementById('currencySelect');
+            var amtEl = document.getElementById('inputAmount');
+            var platEl = document.getElementById('platformSelect');
+            var customPlatBox = document.getElementById('customPlatformBox');
+            var customPlatSlider = document.getElementById('customPlatformSlider');
+            var fxSlider = document.getElementById('fxSpreadSlider');
+            var taxEl = document.getElementById('taxSelect');
+            var hoursEl = document.getElementById('hoursSlider');
+
+            var curr = currEl ? currEl.value : 'USD';
+            var sym = symFor(curr);
+            var rate = RATES_TO_INR[curr] || 93.00;
+            var gross = Math.max(0, parseFloat(amtEl ? amtEl.value : 0) || 0);
+
+            var isCustomPlat = platEl && platEl.value === 'custom';
+            if (customPlatBox) {
+                if (isCustomPlat) customPlatBox.classList.remove('hidden');
+                else customPlatBox.classList.add('hidden');
+            }
+
+            var platPct = isCustomPlat
+                ? (parseFloat(customPlatSlider ? customPlatSlider.value : 5) || 0)
+                : (parseFloat(platEl ? platEl.value : 10) || 0);
+
+            var fxPct = parseFloat(fxSlider ? fxSlider.value : 0.5) || 0;
+            var taxRate = TAX_MAP[taxEl ? taxEl.value : 'in-tds-1'] || 0;
+            var weeklyHours = Math.max(1, parseFloat(hoursEl ? hoursEl.value : 20) || 20);
+
+            var r = runNumbers(gross, platPct, fxPct, taxRate, rate);
+
+            var setTxt = function (id, txt) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = txt;
+            };
+
+            setTxt('currencySymbolPrefix', sym);
+            setTxt('customPlatformVal', platPct + '%');
+            setTxt('fxSpreadLabel', fxPct.toFixed(1) + '%');
+            setTxt('hoursVal', weeklyHours + ' hrs');
+            setTxt('livePairLabel', curr + '/INR');
+            setTxt('liveRateDisplay', '₹' + rate.toFixed(2));
+            setTxt('baseRateSummary', 'Base Rate: ₹' + rate.toFixed(2) + ' / ' + curr);
+            setTxt('netCurrencyCode', curr);
+
+            setTxt('netTakeHomeINR', moneyINR(r.netINR));
+            setTxt('netTakeHomeForeign', moneyForeign(r.netForeign, sym));
+
+            var monthlyHours = weeklyHours * 4.33;
+            setTxt('realHourlyRate', sym + (r.netForeign / monthlyHours).toFixed(2) + ' / hr');
+            setTxt('grossHourly', sym + (gross / monthlyHours).toFixed(2));
+
+            var retPct = gross > 0 ? Math.max(0, Math.min(100, (r.netForeign / gross) * 100)) : 0;
+            var pBar = gross > 0 ? Math.max(0, Math.min(100, (r.platFee / gross) * 100)) : 0;
+            var fBar = gross > 0 ? Math.max(0, Math.min(100, (r.fxLoss / gross) * 100)) : 0;
+            var tBar = gross > 0 ? Math.max(0, Math.min(100, (r.taxCut / gross) * 100)) : 0;
+
+            setTxt('retentionPercent', retPct.toFixed(1) + '% Retained');
+            var b1 = document.getElementById('barTakeHome');
+            var b2 = document.getElementById('barPlatform');
+            var b3 = document.getElementById('barFx');
+            var b4 = document.getElementById('barTax');
+            if (b1) b1.style.width = retPct + '%';
+            if (b2) b2.style.width = pBar + '%';
+            if (b3) b3.style.width = fBar + '%';
+            if (b4) b4.style.width = tBar + '%';
+
+            setTxt('outGrossUSD', moneyForeign(gross, sym));
+            setTxt('outGrossINR', moneyINR(r.grossINR));
+            setTxt('outPlatformPct', platPct + '%');
+            setTxt('outPlatformUSD', moneyForeign(r.platFee, sym));
+            setTxt('outPlatformINR', moneyINR(r.platINR));
+            setTxt('outFxPct', fxPct.toFixed(1) + '%');
+            setTxt('outFxUSD', moneyForeign(r.fxLoss, sym));
+            setTxt('outFxINR', moneyINR(r.fxINR));
+            setTxt('outTaxUSD', moneyForeign(r.taxCut, sym));
+            setTxt('outTaxINR', moneyINR(r.taxINR));
+
+            setTxt('lossAlertINR', moneyINR(r.fxINR));
+            var wiseCalc = runNumbers(gross, platPct, 0.5, taxRate, rate);
+            setTxt('potentialSavingsINR', moneyINR(Math.max(0, wiseCalc.netINR - r.netINR)));
+
+            var tbody = document.getElementById('comparisonTableBody');
+            if (tbody) {
+                var list = [
+                    { name: 'Wise / Skydo (~0.5%)', spread: 0.5 },
+                    { name: 'Bank Wire (~1.8%)', spread: 1.8 },
+                    { name: 'Payoneer (~2.0%)', spread: 2.0 },
+                    { name: 'PayPal (~3.5%)', spread: 3.5 }
+                ];
+                var bestINR = runNumbers(gross, platPct, 0.5, taxRate, rate).netINR;
+                var html = '';
+                for (var i = 0; i < list.length; i++) {
+                    var item = list[i];
+                    var rowCalc = runNumbers(gross, platPct, item.spread, taxRate, rate);
+                    var diff = rowCalc.netINR - bestINR;
+                    var diffTxt = diff === 0 ? 'Best Rate' : moneyINR(diff);
+                    var diffCls = diff === 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-semibold';
+                    html += '<tr>' +
+                        '<td class="py-2.5 font-medium text-slate-800">' + item.name + '</td>' +
+                        '<td class="py-2.5 text-rose-600">-' + moneyINR(rowCalc.fxINR) + '</td>' +
+                        '<td class="py-2.5 font-bold text-slate-900">' + moneyINR(rowCalc.netINR) + '</td>' +
+                        '<td class="py-2.5 text-right ' + diffCls + '">' + diffTxt + '</td>' +
+                        '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+        }
+
+        function setFxMode(mode) {
+            var txtEl = document.getElementById('fxModeText');
+            var dotEl = document.getElementById('fxDot');
+            if (txtEl) txtEl.textContent = mode;
+            if (dotEl) {
+                dotEl.className = mode === 'Live'
+                    ? 'w-2 h-2 rounded-full bg-emerald-500'
+                    : 'w-2 h-2 rounded-full bg-amber-500';
+            }
+        }
+
+        function fetchRatesNow(force) {
+            try {
+                if (!force && window.localStorage) {
+                    var saved = localStorage.getItem(FX_CACHE_KEY);
+                    if (saved) {
+                        var obj = JSON.parse(saved);
+                        if (obj && obj.rates && obj.rates.USD && (Date.now() - obj.ts < FX_TTL_MS)) {
+                            for (var k in obj.rates) RATES_TO_INR[k] = obj.rates[k];
+                            setFxMode('Live');
+                            calculate();
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    var inr = data && data.rates && data.rates.INR;
+                    if (typeof inr === 'number' && inr > 40 && inr < 300) {
+                        RATES_TO_INR.USD = Number(inr.toFixed(2));
+                        if (data.rates.EUR) RATES_TO_INR.EUR = Number((inr / data.rates.EUR).toFixed(2));
+                        if (data.rates.GBP) RATES_TO_INR.GBP = Number((inr / data.rates.GBP).toFixed(2));
+                        if (data.rates.AUD) RATES_TO_INR.AUD = Number((inr / data.rates.AUD).toFixed(2));
+                        if (data.rates.CAD) RATES_TO_INR.CAD = Number((inr / data.rates.CAD).toFixed(2));
+                        try {
+                            localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates: RATES_TO_INR }));
+                        } catch (e) {}
+                        setFxMode('Live');
+                        calculate();
+                    } else {
+                        setFxMode('Est.');
+                    }
+                })
+                .catch(function () {
+                    setFxMode('Est.');
+                });
+        }
+
+        function buildPresets() {
+            var grid = document.getElementById('pseoPresetGrid');
+            if (!grid) return;
+            var html = '';
+            for (var i = 0; i < SCENARIOS.length; i++) {
+                var s = SCENARIOS[i];
+                html += '<button type="button" onclick="applyPreset(' + i + ')" class="text-left p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50">' +
+                    '<div class="font-bold text-slate-900">' + s.title + '</div>' +
+                    '<div class="text-[11px] text-slate-500 mt-0.5">' + symFor(s.currency) + s.amount + ' · ' + s.platform + '% fee · ' + s.spread + '% FX</div>' +
+                    '</button>';
+            }
+            grid.innerHTML = html;
+        }
+
+        function applyPreset(idx) {
+            var s = SCENARIOS[idx];
+            if (!s) return;
+            document.getElementById('inputAmount').value = s.amount;
+            document.getElementById('currencySelect').value = s.currency;
+            document.getElementById('platformSelect').value = s.platform;
+            document.getElementById('gatewaySelect').value = s.gateway;
+            document.getElementById('fxSpreadSlider').value = s.spread;
+            document.getElementById('taxSelect').value = s.tax;
+            document.getElementById('hoursSlider').value = s.hours;
+            calculate();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            buildPresets();
+            calculate();
+            fetchRatesNow(false);
+
+            var amtEl = document.getElementById('inputAmount');
+            if (amtEl) {
+                amtEl.addEventListener('input', calculate);
+                amtEl.addEventListener('change', calculate);
+                amtEl.addEventListener('keyup', calculate);
+            }
+
+            var currEl = document.getElementById('currencySelect');
+            if (currEl) currEl.addEventListener('change', calculate);
+
+            var platEl = document.getElementById('platformSelect');
+            if (platEl) platEl.addEventListener('change', calculate);
+
+            var cPlatEl = document.getElementById('customPlatformSlider');
+            if (cPlatEl) cPlatEl.addEventListener('input', calculate);
+
+            var gwEl = document.getElementById('gatewaySelect');
+            if (gwEl) {
+                gwEl.addEventListener('change', function () {
+                    var sp = GATEWAY_SPREADS[gwEl.value];
+                    if (sp !== undefined && gwEl.value !== 'custom') {
+                        document.getElementById('fxSpreadSlider').value = sp;
+                    }
+                    calculate();
+                });
+            }
+
+            var fxEl = document.getElementById('fxSpreadSlider');
+            if (fxEl) {
+                fxEl.addEventListener('input', function () {
+                    document.getElementById('gatewaySelect').value = 'custom';
+                    calculate();
+                });
+            }
+
+            var taxEl = document.getElementById('taxSelect');
+            if (taxEl) taxEl.addEventListener('change', calculate);
+
+            var hrsEl = document.getElementById('hoursSlider');
+            if (hrsEl) hrsEl.addEventListener('input', calculate);
+
+            var refBtn = document.getElementById('refreshFxBtn');
+            if (refBtn) {
+                refBtn.addEventListener('click', function () {
+                    fetchRatesNow(true);
+                });
+            }
+
+            var copyBtn = document.getElementById('copyShareBtn');
+            if (copyBtn && navigator.clipboard) {
+                copyBtn.addEventListener('click', function () {
+                    navigator.clipboard.writeText(window.location.href).then(function () {
+                        copyBtn.textContent = '✅ Copied!';
+                        setTimeout(function () { copyBtn.textContent = '🔗 Copy Link'; }, 1500);
+                    });
+                });
+            }
+
+            var csvBtn = document.getElementById('exportCsvBtn');
+            if (csvBtn) {
+                csvBtn.addEventListener('click', function () {
+                    var c = document.getElementById('currencySelect').value;
+                    var a = document.getElementById('inputAmount').value;
+                    var net = document.getElementById('netTakeHomeINR').textContent;
+                    var content = 'Currency,Amount,Net INR\n' + c + ',' + a + ',"' + net + '"';
+                    var blob = new Blob([content], { type: 'text/csv' });
+                    var link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'takehome.csv';
+                    link.click();
+                });
+            }
+
+            setInterval(function () { fetchRatesNow(false); }, 30 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>
