@@ -120,8 +120,9 @@
                     📲 Install App
                 </button>
                 <div class="flex items-center space-x-2 text-xs bg-slate-50 px-3.5 py-1.5 rounded-full text-slate-700 border border-slate-200 shadow-inner font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span><span id="livePairLabel">USD/INR</span> Benchmark: <strong id="liveRateDisplay" class="text-slate-900 font-bold">₹84.40</strong></span>
+                    <span id="fxStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span><span id="livePairLabel">USD/INR</span> (<span id="fxSourceBadge">Syncing</span>): <strong id="liveRateDisplay" class="text-slate-900 font-bold">₹93.00</strong></span>
+                    <button type="button" id="refreshFxBtn" title="Refresh Live Rate" class="text-[11px] bg-white hover:bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded border border-slate-200 transition">↻</button>
                 </div>
             </div>
         </div>
@@ -284,7 +285,7 @@
                     <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                         <h3 class="font-bold text-slate-900 text-sm">Deduction Summary</h3>
                         <div class="flex items-center gap-3">
-                            <span id="baseRateSummary" class="text-xs text-slate-500 font-normal">Base Rate: ₹84.40 / USD</span>
+                            <span id="baseRateSummary" class="text-xs text-slate-500 font-normal">Base Rate: ₹93.00 / USD</span>
                             <button type="button" id="exportCsvBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-lg border border-slate-300 transition">
                                 📥 Export CSV
                             </button>
@@ -373,7 +374,7 @@
             </div>
         </section>
 
-        <!-- Quick Scenario Buttons (Non-indexable parameter bloat) -->
+        <!-- Quick Scenario Buttons -->
         <section class="mt-12 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto">
             <h2 class="text-base font-bold text-slate-900 mb-1">Popular Freelancer Fee & FX Scenarios</h2>
             <p class="text-xs text-slate-500 mb-5">Click any scenario below to load its platform fees, gateway FX spread, and tax rules into the calculator:</p>
@@ -456,264 +457,4 @@
         <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 class="font-extrabold text-lg text-slate-900">Terms & Conditions</h3>
-                <button type="button" onclick="closeModal('termsModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
-                <p>NetTakeHome.engine provides estimates for informational purposes only and does not constitute financial, legal, or tax advice.</p>
-            </div>
-            <div class="pt-2 text-right">
-                <button type="button" onclick="closeModal('termsModal')" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="disclaimerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-lg text-slate-900">Disclaimer</h3>
-                <button type="button" onclick="closeModal('disclaimerModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
-                <p>Exchange rates, platform fees, FX markups, and tax/TDS estimates are indicative benchmarks and may vary by provider or jurisdiction.</p>
-            </div>
-            <div class="pt-2 text-right">
-                <button type="button" onclick="closeModal('disclaimerModal')" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const RATES_TO_INR = { USD: 84.40, EUR: 91.20, GBP: 108.50, AUD: 55.80, CAD: 60.70 };
-        const GATEWAY_SPREADS = { wise: 0.5, bankwire: 1.8, payoneer: 2.0, paypal: 3.5 };
-        const TAX_RATES = { 'in-tds-1': 0.01, 'in-gst-tds': 0.028, 'in-44ada': 0.05, 'us-self': 0.15, 'none': 0 };
-        const PRESETS = [
-            { label: 'Upwork $1,500 → Wise (1% TDS)', amount: 1500, platform: '10', gateway: 'wise', spread: 0.5, tax: 'in-tds-1' },
-            { label: 'Fiverr $500 → PayPal (1% TDS)', amount: 500, platform: '20', gateway: 'paypal', spread: 3.5, tax: 'in-tds-1' },
-            { label: 'Direct $2,000 → Wise (44ADA)', amount: 2000, platform: '0', gateway: 'wise', spread: 0.5, tax: 'in-44ada' },
-            { label: 'Upwork €1,000 → Bank Wire', amount: 1000, currency: 'EUR', platform: '10', gateway: 'bankwire', spread: 1.8, tax: 'in-tds-1' },
-            { label: 'Direct £1,200 → Wise (1% TDS)', amount: 1200, currency: 'GBP', platform: '0', gateway: 'wise', spread: 0.5, tax: 'in-tds-1' },
-            { label: 'Fiverr $1,000 → Payoneer', amount: 1000, platform: '20', gateway: 'payoneer', spread: 2.0, tax: 'in-gst-tds' }
-        ];
-
-        const els = {
-            currency: document.getElementById('currencySelect'),
-            symbol: document.getElementById('currencySymbolPrefix'),
-            amount: document.getElementById('inputAmount'),
-            platform: document.getElementById('platformSelect'),
-            customPlatformBox: document.getElementById('customPlatformBox'),
-            customPlatformSlider: document.getElementById('customPlatformSlider'),
-            customPlatformVal: document.getElementById('customPlatformVal'),
-            gateway: document.getElementById('gatewaySelect'),
-            fxSpreadSlider: document.getElementById('fxSpreadSlider'),
-            fxSpreadLabel: document.getElementById('fxSpreadLabel'),
-            tax: document.getElementById('taxSelect'),
-            hoursSlider: document.getElementById('hoursSlider'),
-            hoursVal: document.getElementById('hoursVal'),
-            livePairLabel: document.getElementById('livePairLabel'),
-            liveRateDisplay: document.getElementById('liveRateDisplay'),
-            baseRateSummary: document.getElementById('baseRateSummary'),
-            netINR: document.getElementById('netTakeHomeINR'),
-            netForeign: document.getElementById('netTakeHomeForeign'),
-            netCode: document.getElementById('netCurrencyCode'),
-            realHourly: document.getElementById('realHourlyRate'),
-            grossHourly: document.getElementById('grossHourly'),
-            retentionPercent: document.getElementById('retentionPercent'),
-            barTakeHome: document.getElementById('barTakeHome'),
-            barPlatform: document.getElementById('barPlatform'),
-            barFx: document.getElementById('barFx'),
-            barTax: document.getElementById('barTax'),
-            outGrossUSD: document.getElementById('outGrossUSD'),
-            outGrossINR: document.getElementById('outGrossINR'),
-            outPlatformPct: document.getElementById('outPlatformPct'),
-            outPlatformUSD: document.getElementById('outPlatformUSD'),
-            outPlatformINR: document.getElementById('outPlatformINR'),
-            outFxPct: document.getElementById('outFxPct'),
-            outFxUSD: document.getElementById('outFxUSD'),
-            outFxINR: document.getElementById('outFxINR'),
-            outTaxUSD: document.getElementById('outTaxUSD'),
-            outTaxINR: document.getElementById('outTaxINR'),
-            comparisonBody: document.getElementById('comparisonTableBody'),
-            lossAlertINR: document.getElementById('lossAlertINR'),
-            potentialSavingsINR: document.getElementById('potentialSavingsINR'),
-            presetGrid: document.getElementById('pseoPresetGrid'),
-            copyShareBtn: document.getElementById('copyShareBtn'),
-            exportCsvBtn: document.getElementById('exportCsvBtn')
-        };
-
-        function formatINR(val) {
-            return '₹' + Math.round(val).toLocaleString('en-IN');
-        }
-
-        function getPlatformFeePct() {
-            if (els.platform.value === 'custom') return Number(els.customPlatformSlider.value) || 0;
-            return Number(els.platform.value) || 0;
-        }
-
-        function calculate() {
-            const curr = els.currency.value;
-            const sym = els.currency.selectedOptions[0]?.dataset.symbol || '$';
-            const rate = RATES_TO_INR[curr] || 84.40;
-            const gross = Math.max(0, Number(els.amount.value) || 0);
-            const platPct = getPlatformFeePct();
-            const fxPct = Math.max(0, Number(els.fxSpreadSlider.value) || 0);
-            const taxRate = TAX_RATES[els.tax.value] || 0;
-            const weeklyHrs = Math.max(1, Number(els.hoursSlider.value) || 20);
-
-            els.symbol.textContent = sym;
-            els.livePairLabel.textContent = curr + '/INR';
-            els.liveRateDisplay.textContent = '₹' + rate.toFixed(2);
-            els.baseRateSummary.textContent = `Base Rate: ₹${rate.toFixed(2)} / ${curr}`;
-            els.hoursVal.textContent = weeklyHrs + ' hrs';
-            els.customPlatformVal.textContent = platPct + '%';
-            els.fxSpreadLabel.textContent = fxPct.toFixed(1) + '%';
-
-            const platFee = gross * (platPct / 100);
-            const afterPlatform = Math.max(0, gross - platFee);
-            const fxLoss = afterPlatform * (fxPct / 100);
-            const afterFx = Math.max(0, afterPlatform - fxLoss);
-            const taxCut = gross * taxRate;
-            const netForeign = Math.max(0, afterFx - taxCut);
-            const netINR = netForeign * rate;
-
-            const grossINR = gross * rate;
-            const platINR = platFee * rate;
-            const fxINR = fxLoss * rate;
-            const taxINR = taxCut * rate;
-
-            els.netINR.textContent = formatINR(netINR);
-            els.netForeign.textContent = sym + netForeign.toFixed(2);
-            els.netCode.textContent = curr;
-
-            const monthlyHrs = weeklyHrs * 4.33;
-            els.realHourly.textContent = sym + (netForeign / monthlyHrs).toFixed(2) + ' / hr';
-            els.grossHourly.textContent = sym + (gross / monthlyHrs).toFixed(2);
-
-            const retPct = gross > 0 ? Math.max(0, Math.min(100, (netForeign / gross) * 100)) : 0;
-            const platBarPct = gross > 0 ? Math.min(100, (platFee / gross) * 100) : 0;
-            const fxBarPct = gross > 0 ? Math.min(100, (fxLoss / gross) * 100) : 0;
-            const taxBarPct = gross > 0 ? Math.min(100, (taxCut / gross) * 100) : 0;
-
-            els.retentionPercent.textContent = retPct.toFixed(1) + '% Retained';
-            els.barTakeHome.style.width = retPct + '%';
-            els.barPlatform.style.width = platBarPct + '%';
-            els.barFx.style.width = fxBarPct + '%';
-            els.barTax.style.width = taxBarPct + '%';
-
-            els.outGrossUSD.textContent = sym + gross.toFixed(2);
-            els.outGrossINR.textContent = formatINR(grossINR);
-            els.outPlatformPct.textContent = platPct + '%';
-            els.outPlatformUSD.textContent = sym + platFee.toFixed(2);
-            els.outPlatformINR.textContent = formatINR(platINR);
-            els.outFxPct.textContent = fxPct.toFixed(1) + '%';
-            els.outFxUSD.textContent = sym + fxLoss.toFixed(2);
-            els.outFxINR.textContent = formatINR(fxINR);
-            els.outTaxUSD.textContent = sym + taxCut.toFixed(2);
-            els.outTaxINR.textContent = formatINR(taxINR);
-
-            els.lossAlertINR.textContent = formatINR(fxINR);
-            const wiseNetINR = Math.max(0, (afterPlatform * (1 - 0.005)) - taxCut) * rate;
-            const paypalNetINR = Math.max(0, (afterPlatform * (1 - 0.035)) - taxCut) * rate;
-            els.potentialSavingsINR.textContent = formatINR(Math.max(0, wiseNetINR - paypalNetINR));
-
-            const methods = [
-                { name: 'Wise / Skydo', spread: 0.5 },
-                { name: 'Direct Bank Wire', spread: 1.8 },
-                { name: 'Payoneer', spread: 2.0 },
-                { name: 'PayPal', spread: 3.5 }
-            ];
-            els.comparisonBody.innerHTML = methods.map(m => {
-                const mFxForeign = afterPlatform * (m.spread / 100);
-                const mNetForeign = Math.max(0, afterPlatform - mFxForeign - taxCut);
-                const mNetINR = mNetForeign * rate;
-                const diffINR = mNetINR - wiseNetINR;
-                return `
-                    <tr>
-                        <td class="py-2.5 font-semibold text-slate-900">${m.name}</td>
-                        <td class="py-2.5 text-rose-600">-${formatINR(mFxForeign * rate)} (${m.spread}%)</td>
-                        <td class="py-2.5 font-bold text-slate-900">${formatINR(mNetINR)}</td>
-                        <td class="py-2.5 text-right font-semibold ${diffINR >= 0 ? 'text-emerald-600' : 'text-amber-600'}">${diffINR >= 0 ? 'Best' : formatINR(diffINR)}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function renderPresets() {
-            els.presetGrid.innerHTML = PRESETS.map((p, idx) => `
-                <button type="button" data-preset="${idx}" class="text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition font-medium text-slate-700">
-                    ${p.label}
-                </button>
-            `).join('');
-
-            els.presetGrid.querySelectorAll('button[data-preset]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const p = PRESETS[Number(btn.dataset.preset)];
-                    if (!p) return;
-                    if (p.currency) els.currency.value = p.currency;
-                    els.amount.value = p.amount;
-                    els.platform.value = p.platform;
-                    els.customPlatformBox.classList.toggle('hidden', p.platform !== 'custom');
-                    els.gateway.value = p.gateway;
-                    els.fxSpreadSlider.value = p.spread;
-                    els.tax.value = p.tax;
-                    calculate();
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                });
-            });
-        }
-
-        els.platform.addEventListener('change', () => {
-            els.customPlatformBox.classList.toggle('hidden', els.platform.value !== 'custom');
-            calculate();
-        });
-
-        els.gateway.addEventListener('change', () => {
-            if (GATEWAY_SPREADS[els.gateway.value] !== undefined) {
-                els.fxSpreadSlider.value = GATEWAY_SPREADS[els.gateway.value];
-            }
-            calculate();
-        });
-
-        [els.currency, els.amount, els.customPlatformSlider, els.fxSpreadSlider, els.tax, els.hoursSlider].forEach(el => {
-            el.addEventListener('input', calculate);
-            el.addEventListener('change', calculate);
-        });
-
-        els.copyShareBtn.addEventListener('click', () => {
-            navigator.clipboard?.writeText('https://nettakehomeengine.vercel.app/');
-            els.copyShareBtn.textContent = '✅ Copied';
-            setTimeout(() => { els.copyShareBtn.textContent = '🔗 Copy Link'; }, 1500);
-        });
-
-        els.exportCsvBtn.addEventListener('click', () => {
-            const rows = [
-                ['Metric', 'Value'],
-                ['Gross Invoice', els.outGrossUSD.textContent],
-                ['Platform Fee', els.outPlatformUSD.textContent],
-                ['FX Spread Loss', els.outFxUSD.textContent],
-                ['Tax / TDS', els.outTaxUSD.textContent],
-                ['Net Take-Home (INR)', els.netINR.textContent]
-            ];
-            const csv = rows.map(r => r.join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'net-take-home-breakdown.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-
-        function openModal(id) {
-            const el = document.getElementById(id);
-            if (el) el.classList.remove('hidden');
-        }
-        function closeModal(id) {
-            const el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        }
-
-        renderPresets();
-        calculate();
-    </script>
-</body>
-</html>
+                <button type="button" onclick="closeModal('termsModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold
