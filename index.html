@@ -1,460 +1,247 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="google-site-verification" content="S-YOhVAWIIfW1xM88mx_Jc5XimOwmkAjQrAsOrXbNtg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+        (function () {
+            const FX_CACHE_KEY = 'nthe_live_fx_v2';
+            const FX_TTL_MS = 4 * 60 * 60 * 1000;
+            let RATES_TO_INR = { USD: 93.00, EUR: 100.50, GBP: 118.20, AUD: 61.00, CAD: 66.50 };
+            let fxStatusText = 'Syncing';
 
-    <!-- Primary SEO Meta Tags -->
-    <title>Freelancer Net Take-Home & Hidden Fee Engine | Upwork, Fiverr, Wise & PayPal Calculator</title>
-    <meta name="description" content="Calculate your exact freelance net take-home cash in INR after Upwork/Fiverr commissions, hidden PayPal/Payoneer/Wise FX conversion markups, and Section 194-O TDS taxes.">
-    <meta name="keywords" content="freelancer fee calculator India, Upwork fee calculator USD to INR, Fiverr withdrawal charges India, PayPal vs Wise exchange rate India, Section 194-O TDS calculator, Payoneer hidden fee calculator, freelance net income calculator">
-    <link rel="canonical" href="https://nettakehomeengine.vercel.app/">
-    <meta name="robots" content="index, follow">
+            const GATEWAY_PRESETS = {
+                wise:     { spread: 0.5, label: 'Wise / Skydo (~0.5%)' },
+                bankwire: { spread: 1.8, label: 'Bank Wire (~1.8%)' },
+                payoneer: { spread: 2.0, label: 'Payoneer (~2.0%)' },
+                paypal:   { spread: 3.5, label: 'PayPal (~3.5%)' },
+                custom:   { spread: 1.5, label: 'Custom Gateway' }
+            };
 
-    <!-- PWA Manifest & Theme -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#059669">
-    <link rel="apple-touch-icon" href="/icon.png">
+            const TAX_RATES = {
+                'in-tds-1':   0.01,
+                'in-gst-tds': 0.028,
+                'in-44ada':   0.05,
+                'us-self':    0.15,
+                'none':       0.00
+            };
 
-    <!-- Open Graph / Social Sharing -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Freelancer Net Take-Home & Hidden Fee Engine">
-    <meta property="og:description" content="Stop losing 3-5% on hidden FX markups. Compare Wise, Payoneer, PayPal & Bank Wire net payouts in real-time.">
-    <meta property="og:url" content="https://nettakehomeengine.vercel.app/">
+            const PRESET_SCENARIOS = [
+                { title: 'Upwork + Wise (India TDS)', amount: 1500, currency: 'USD', platform: '10', gateway: 'wise', spread: 0.5, tax: 'in-tds-1', hours: 20 },
+                { title: 'Upwork + PayPal (High FX)', amount: 1500, currency: 'USD', platform: '10', gateway: 'paypal', spread: 3.5, tax: 'in-tds-1', hours: 20 },
+                { title: 'Fiverr + Payoneer (20% Fee)', amount: 1000, currency: 'USD', platform: '20', gateway: 'payoneer', spread: 2.0, tax: 'in-tds-1', hours: 15 },
+                { title: 'Direct Client + Wise (0% Fee)', amount: 2500, currency: 'USD', platform: '0', gateway: 'wise', spread: 0.5, tax: 'in-44ada', hours: 25 },
+                { title: 'EUR Client + Bank Wire', amount: 1200, currency: 'EUR', platform: '0', gateway: 'bankwire', spread: 1.8, tax: 'in-tds-1', hours: 20 },
+                { title: 'GBP Client + Wise', amount: 1000, currency: 'GBP', platform: '10', gateway: 'wise', spread: 0.5, tax: 'in-tds-1', hours: 20 }
+            ];
 
-    <!-- Structured Data Schema -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "SoftwareApplication",
-          "name": "NetTakeHome.engine",
-          "operatingSystem": "All",
-          "applicationCategory": "FinanceApplication",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-          }
-        },
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://nettakehomeengine.vercel.app/" },
-            { "@type": "ListItem", "position": 2, "name": "Calculator & Fee Engine", "item": "https://nettakehomeengine.vercel.app/" }
-          ]
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What is Hidden FX Spread in freelance payments?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "When receiving foreign currency payments, payment providers convert funds using an exchange rate 2% to 4% lower than the real Google mid-market rate. That hidden gap is an FX spread fee."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How is Section 194-O TDS calculated for Indian freelancers?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Under Indian Income Tax Section 194-O, e-commerce and freelance marketplaces like Upwork deduct 1% TDS on gross payouts for resident Indian freelancers."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Which payment gateway gives the highest INR rate for Indian freelancers?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Mid-market transfer platforms like Wise and Skydo offer real Google exchange rates with a transparent 0.4% to 0.6% fee, saving up to 3% compared to PayPal or traditional bank wires."
-              }
+            const $ = (id) => document.getElementById(id);
+
+            const els = {
+                currency: $('currencySelect'),
+                symbolPrefix: $('currencySymbolPrefix'),
+                amount: $('inputAmount'),
+                platform: $('platformSelect'),
+                customPlatformBox: $('customPlatformBox'),
+                customPlatformSlider: $('customPlatformSlider'),
+                customPlatformVal: $('customPlatformVal'),
+                gateway: $('gatewaySelect'),
+                fxSpreadSlider: $('fxSpreadSlider'),
+                fxSpreadLabel: $('fxSpreadLabel'),
+                tax: $('taxSelect'),
+                hours: $('hoursSlider'),
+                hoursVal: $('hoursVal'),
+                livePairLabel: $('livePairLabel'),
+                liveRateDisplay: $('liveRateDisplay'),
+                fxStatusDot: $('fxStatusDot'),
+                fxSourceBadge: $('fxSourceBadge'),
+                refreshFxBtn: $('refreshFxBtn'),
+                baseRateSummary: $('baseRateSummary'),
+                netTakeHomeINR: $('netTakeHomeINR'),
+                netTakeHomeForeign: $('netTakeHomeForeign'),
+                netCurrencyCode: $('netCurrencyCode'),
+                realHourlyRate: $('realHourlyRate'),
+                grossHourly: $('grossHourly'),
+                retentionPercent: $('retentionPercent'),
+                barTakeHome: $('barTakeHome'),
+                barPlatform: $('barPlatform'),
+                barFx: $('barFx'),
+                barTax: $('barTax'),
+                outGrossUSD: $('outGrossUSD'),
+                outGrossINR: $('outGrossINR'),
+                outPlatformPct: $('outPlatformPct'),
+                outPlatformUSD: $('outPlatformUSD'),
+                outPlatformINR: $('outPlatformINR'),
+                outFxPct: $('outFxPct'),
+                outFxUSD: $('outFxUSD'),
+                outFxINR: $('outFxINR'),
+                outTaxUSD: $('outTaxUSD'),
+                outTaxINR: $('outTaxINR'),
+                comparisonTableBody: $('comparisonTableBody'),
+                lossAlertINR: $('lossAlertINR'),
+                potentialSavingsINR: $('potentialSavingsINR'),
+                presetGrid: $('pseoPresetGrid'),
+                copyShareBtn: $('copyShareBtn'),
+                exportCsvBtn: $('exportCsvBtn')
+            };
+
+            function getSymbol(code) {
+                return ({ USD: '$', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$' })[code] \vert{}\vert{} '$';
             }
-          ]
-        }
-      ]
-    }
-    </script>
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' },
-                        navy: { 800: '#1e293b', 900: '#0f172a' }
+            function fmtINR(n) {
+                return '₹' + Math.round(Number.isFinite(n) ? n : 0).toLocaleString('en-IN');
+            }
+
+            function fmtForeign(n, sym) {
+                return sym + (Number.isFinite(n) ? n.toFixed(2) : '0.00');
+            }
+
+            function updateBadgeUI() {
+                if (els.fxSourceBadge) {
+                    els.fxSourceBadge.textContent = fxStatusText;
+                }
+                if (els.fxStatusDot) {
+                    if (fxStatusText === 'Live') {
+                        els.fxStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                    } else if (fxStatusText === 'Syncing') {
+                        els.fxStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+                    } else {
+                        els.fxStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
                     }
                 }
             }
-        }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        input[type=range] { accent-color: #059669; }
-    </style>
-</head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between antialiased selection:bg-emerald-100 selection:text-emerald-900">
 
-    <!-- Header -->
-    <header class="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-                <div class="bg-emerald-600 text-white p-2 rounded-xl shadow-md shadow-emerald-600/20">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <span class="font-extrabold text-lg leading-tight tracking-tight text-slate-900 block">NetTakeHome<span class="text-emerald-600">.engine</span></span>
-                    <p class="text-xs text-slate-500 font-medium hidden sm:block">Global Freelancer Fee & FX Transparency Tool</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button type="button" id="installAppBtn" class="hidden text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl transition shadow-sm">
-                    📲 Install App
-                </button>
-                <div class="flex items-center space-x-2 text-xs bg-slate-50 px-3.5 py-1.5 rounded-full text-slate-700 border border-slate-200 shadow-inner font-medium">
-                    <span id="fxStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span><span id="livePairLabel">USD/INR</span> (<span id="fxSourceBadge">Syncing</span>): <strong id="liveRateDisplay" class="text-slate-900 font-bold">₹93.00</strong></span>
-                    <button type="button" id="refreshFxBtn" title="Refresh Live Rate" class="text-[11px] bg-white hover:bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded border border-slate-200 transition">↻</button>
-                </div>
-            </div>
-        </div>
-    </header>
+            function loadCache() {
+                try {
+                    const raw = localStorage.getItem(FX_CACHE_KEY);
+                    if (!raw) return false;
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.rates && typeof parsed.rates.USD === 'number' && (Date.now() - parsed.ts < FX_TTL_MS)) {
+                        RATES_TO_INR = Object.assign({}, RATES_TO_INR, parsed.rates);
+                        fxStatusText = 'Live';
+                        return true;
+                    }
+                } catch (_) {}
+                return false;
+            }
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 mb-12 flex-grow w-full">
+            function saveCache(rates) {
+                try {
+                    localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates: rates }));
+                } catch (_) {}
+            }
 
-        <!-- Hero -->
-        <div class="text-center max-w-3xl mx-auto mb-10">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-3 shadow-sm">
-                🛡️ Zero-Spread Financial Clarity
-            </span>
-            <h1 id="dynamicHeroTitle" class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Know Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">Actual Real Take-Home</span> Cash
-            </h1>
-            <p id="dynamicHeroSub" class="mt-2.5 text-slate-600 text-sm sm:text-base leading-relaxed">
-                Calculate real net earnings after platform commissions, hidden exchange rate markups, and local taxes in real-time.
-            </p>
-        </div>
+            async function fetchFreshRates() {
+                try {
+                    const r1 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+                    if (r1.ok) {
+                        const d1 = await r1.json();
+                        const inr1 = d1 && d1.rates && d1.rates.INR;
+                        if (typeof inr1 === 'number' && inr1 > 40 && inr1 < 300) {
+                            return {
+                                USD: Number(inr1.toFixed(2)),
+                                EUR: d1.rates.EUR ? Number((inr1 / d1.rates.EUR).toFixed(2)) : RATES_TO_INR.EUR,
+                                GBP: d1.rates.GBP ? Number((inr1 / d1.rates.GBP).toFixed(2)) : RATES_TO_INR.GBP,
+                                AUD: d1.rates.AUD ? Number((inr1 / d1.rates.AUD).toFixed(2)) : RATES_TO_INR.AUD,
+                                CAD: d1.rates.CAD ? Number((inr1 / d1.rates.CAD).toFixed(2)) : RATES_TO_INR.CAD
+                            };
+                        }
+                    }
+                } catch (_) {}
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                const r2 = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR,EUR,GBP,AUD,CAD', { cache: 'no-store' });
+                if (!r2.ok) throw new Error('FX API unavailable');
+                const d2 = await r2.json();
+                const inr2 = d2 && d2.rates && d2.rates.INR;
+                if (typeof inr2 !== 'number' || inr2 < 40 || inr2 > 300) throw new Error('Invalid FX rate');
 
-            <!-- LEFT PANEL: CONTROLS -->
-            <div class="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-6">
+                return {
+                    USD: Number(inr2.toFixed(2)),
+                    EUR: d2.rates.EUR ? Number((inr2 / d2.rates.EUR).toFixed(2)) : RATES_TO_INR.EUR,
+                    GBP: d2.rates.GBP ? Number((inr2 / d2.rates.GBP).toFixed(2)) : RATES_TO_INR.GBP,
+                    AUD: d2.rates.AUD ? Number((inr2 / d2.rates.AUD).toFixed(2)) : RATES_TO_INR.AUD,
+                    CAD: d2.rates.CAD ? Number((inr2 / d2.rates.CAD).toFixed(2)) : RATES_TO_INR.CAD
+                };
+            }
 
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                        Input Parameters
-                    </h2>
-                    <button type="button" id="copyShareBtn" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition">
-                        🔗 Copy Link
-                    </button>
-                </div>
+            async function syncRates(force) {
+                if (!force && loadCache()) {
+                    updateBadgeUI();
+                    calculate();
+                    return;
+                }
+                fxStatusText = 'Syncing';
+                updateBadgeUI();
+                if (els.refreshFxBtn) els.refreshFxBtn.textContent = '↻...';
 
-                <!-- 1. Invoice Amount -->
-                <div>
-                    <label for="inputAmount" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">1. Invoice / Project Amount</label>
-                    <div class="flex gap-2">
-                        <select id="currencySelect" aria-label="Invoice Currency" class="bg-slate-50 border border-slate-300 rounded-xl py-3 px-3 text-slate-900 font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-                            <option value="USD" data-symbol="$" selected>USD ($)</option>
-                            <option value="EUR" data-symbol="€">EUR (€)</option>
-                            <option value="GBP" data-symbol="£">GBP (£)</option>
-                            <option value="AUD" data-symbol="A$">AUD (A$)</option>
-                            <option value="CAD" data-symbol="C$">CAD (C$)</option>
-                        </select>
-                        <div class="relative rounded-xl shadow-sm flex-grow">
-                            <div id="currencySymbolPrefix" class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-bold text-lg">$</div>
-                            <input type="number" id="inputAmount" value="1500" min="1" step="50" class="block w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold text-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" placeholder="1000">
-                        </div>
-                    </div>
-                </div>
+                try {
+                    const fresh = await fetchFreshRates();
+                    RATES_TO_INR = fresh;
+                    fxStatusText = 'Live';
+                    saveCache(fresh);
+                } catch (_) {
+                    fxStatusText = 'Est.';
+                }
 
-                <!-- 2. Freelance Platform -->
-                <div>
-                    <label for="platformSelect" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">2. Freelance Platform</label>
-                    <select id="platformSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
-                        <option value="10">Upwork (Standard 10%)</option>
-                        <option value="20">Fiverr (Standard 20%)</option>
-                        <option value="15">Toptal / Agency (15%)</option>
-                        <option value="5">Freelancer.com / Guru (5%)</option>
-                        <option value="0">Direct Client / Custom Contract (0%)</option>
-                        <option value="custom">Custom Platform Percentage...</option>
-                    </select>
+                if (els.refreshFxBtn) els.refreshFxBtn.textContent = '↻';
+                updateBadgeUI();
+                calculate();
+            }
 
-                    <div id="customPlatformBox" class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hidden">
-                        <div class="flex justify-between text-xs text-slate-700 mb-1">
-                            <span>Custom Fee:</span>
-                            <span id="customPlatformVal" class="font-bold text-emerald-600">5%</span>
-                        </div>
-                        <input type="range" id="customPlatformSlider" min="0" max="30" value="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                </div>
+            function calcScenario(gross, platformPct, fxPct, taxRate, rate) {
+                const platformFee = gross * (platformPct / 100);
+                const afterPlat = Math.max(0, gross - platformFee);
+                const fxLoss = afterPlat * (fxPct / 100);
+                const afterFx = Math.max(0, afterPlat - fxLoss);
+                const taxCut = gross * taxRate;
+                const netForeign = Math.max(0, afterFx - taxCut);
 
-                <!-- 3. Withdrawal Gateway -->
-                <div>
-                    <label for="gatewaySelect" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">3. Withdrawal Gateway</label>
-                    <select id="gatewaySelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
-                        <option value="wise" selected>Wise / Skydo (Real Mid-Market Rate ~0.5% Fee)</option>
-                        <option value="bankwire">Direct Bank Wire (SWIFT Fee + ~1.8% FX Loss)</option>
-                        <option value="payoneer">Payoneer (Medium FX Spread ~2.0%)</option>
-                        <option value="paypal">PayPal (High FX Spread ~3.5% + Fees)</option>
-                        <option value="custom">Custom FX Spread Adjustment...</option>
-                    </select>
+                return {
+                    gross: gross,
+                    grossINR: gross * rate,
+                    platformFee: platformFee,
+                    platformINR: platformFee * rate,
+                    fxLoss: fxLoss,
+                    fxINR: fxLoss * rate,
+                    taxCut: taxCut,
+                    taxINR: taxCut * rate,
+                    netForeign: netForeign,
+                    netINR: netForeign * rate
+                };
+            }
 
-                    <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <div class="flex justify-between text-xs text-slate-700 mb-1">
-                            <span>Gateway FX Rate Loss (Spread):</span>
-                            <span id="fxSpreadLabel" class="font-bold text-amber-600">0.5%</span>
-                        </div>
-                        <input type="range" id="fxSpreadSlider" min="0.2" max="6.0" step="0.1" value="0.5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                        <p class="text-[11px] text-slate-500 mt-1">Hidden spread kept by gateway over mid-market rate.</p>
-                    </div>
-                </div>
+            function calculate() {
+                const curr = els.currency ? els.currency.value : 'USD';
+                const sym = getSymbol(curr);
+                const rate = RATES_TO_INR[curr] || 93.00;
+                const gross = Math.max(0, parseFloat(els.amount && els.amount.value) || 0);
 
-                <!-- 4. Tax & TDS -->
-                <div>
-                    <label for="taxSelect" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">4. Tax & Local TDS Rules</label>
-                    <select id="taxSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
-                        <option value="in-tds-1">India: Sec 194-O TDS (1% Deducted at Source)</option>
-                        <option value="in-gst-tds">India: 1% TDS + 18% GST on Platform Fee (~2.8%)</option>
-                        <option value="in-44ada">India: Presumptive Tax (Sec 44ADA ~5% Est.)</option>
-                        <option value="us-self">US / Global: Self-Employment Est. (15%)</option>
-                        <option value="none">Zero Tax / Exempt / Already Handled (0%)</option>
-                    </select>
-                </div>
+                const isCustomPlat = els.platform && els.platform.value === 'custom';
+                if (els.customPlatformBox) {
+                    els.customPlatformBox.classList.toggle('hidden', !isCustomPlat);
+                }
+                const platformPct = isCustomPlat
+                    ? (parseFloat(els.customPlatformSlider && els.customPlatformSlider.value) || 0)
+                    : (parseFloat(els.platform && els.platform.value) || 0);
 
-                <!-- 5. Weekly Hours -->
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label for="hoursSlider" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">5. Weekly Hours Worked (Optional)</label>
-                        <span id="hoursVal" class="text-xs font-bold text-emerald-600">20 hrs</span>
-                    </div>
-                    <input type="range" id="hoursSlider" min="1" max="60" value="20" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                </div>
+                const fxSpreadPct = parseFloat(els.fxSpreadSlider && els.fxSpreadSlider.value) || 0;
+                const taxRate = TAX_RATES[els.tax && els.tax.value] ?? 0;
+                const weeklyHours = Math.max(1, parseFloat(els.hours && els.hours.value) || 20);
 
-            </div>
+                if (els.symbolPrefix) els.symbolPrefix.textContent = sym;
+                if (els.customPlatformVal) els.customPlatformVal.textContent = platformPct + '%';
+                if (els.fxSpreadLabel) els.fxSpreadLabel.textContent = fxSpreadPct.toFixed(1) + '%';
+                if (els.hoursVal) els.hoursVal.textContent = weeklyHours + ' hrs';
+                if (els.livePairLabel) els.livePairLabel.textContent = curr + '/INR';
+                if (els.liveRateDisplay) els.liveRateDisplay.textContent = '₹' + rate.toFixed(2);
+                if (els.baseRateSummary) els.baseRateSummary.textContent = 'Base Rate: ₹' + rate.toFixed(2) + ' / ' + curr;
+                if (els.netCurrencyCode) els.netCurrencyCode.textContent = curr;
 
-            <!-- RIGHT PANEL: RESULTS -->
-            <div class="lg:col-span-7 space-y-6">
+                const res = calcScenario(gross, platformPct, fxSpreadPct, taxRate, rate);
 
-                <!-- Net Take-Home Card -->
-                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-6">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-widest text-emerald-600">Final Net Cash In Hand</p>
-                            <h2 id="netTakeHomeINR" class="text-3xl sm:text-5xl font-black text-slate-900 mt-1 tracking-tight">₹0</h2>
-                            <p class="text-xs text-slate-500 font-medium mt-1">Net deposited in bank (<span id="netTakeHomeForeign">$0</span> <span id="netCurrencyCode">USD</span>)</p>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-center min-w-[140px] shadow-sm">
-                            <p class="text-[10px] uppercase font-bold text-slate-500">Real Hourly Rate</p>
-                            <p id="realHourlyRate" class="text-xl font-bold text-indigo-600 mt-0.5">$0.00 / hr</p>
-                            <span class="text-[10px] text-slate-500 font-medium">Gross: <span id="grossHourly">$0</span>/hr</span>
-                        </div>
-                    </div>
+                if (els.netTakeHomeINR) els.netTakeHomeINR.textContent = fmtINR(res.netINR);
+                if (els.netTakeHomeForeign) els.netTakeHomeForeign.textContent = fmtForeign(res.netForeign, sym);
 
-                    <div class="mt-6">
-                        <div class="flex justify-between text-xs text-slate-600 mb-2 font-medium">
-                            <span>Payout Retention Breakdown</span>
-                            <span id="retentionPercent" class="text-emerald-600 font-bold">0% Retained</span>
-                        </div>
-                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex border border-slate-200">
-                            <div id="barTakeHome" class="bg-emerald-500 h-full transition-all duration-300" style="width: 75%"></div>
-                            <div id="barPlatform" class="bg-indigo-500 h-full transition-all duration-300" style="width: 10%"></div>
-                            <div id="barFx" class="bg-rose-500 h-full transition-all duration-300" style="width: 10%"></div>
-                            <div id="barTax" class="bg-amber-500 h-full transition-all duration-300" style="width: 5%"></div>
-                        </div>
-                        <div class="flex flex-wrap gap-4 text-[11px] font-medium text-slate-600 mt-3.5">
-                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Net Take-Home</span>
-                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>Platform Fee</span>
-                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>FX Loss</span>
-                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>TDS/Tax</span>
-                        </div>
-                    </div>
-                </div>
+                const monthlyHours = weeklyHours * 4.33;
+                if (els.realHourlyRate) els.realHourlyRate.textContent = sym + (res.netForeign / monthlyHours).toFixed(2) + ' / hr';
+                if (els.grossHourly) els.grossHourly.textContent = sym + (gross / monthlyHours).toFixed(2);
 
-                <!-- Deduction Summary -->
-                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                        <h3 class="font-bold text-slate-900 text-sm">Deduction Summary</h3>
-                        <div class="flex items-center gap-3">
-                            <span id="baseRateSummary" class="text-xs text-slate-500 font-normal">Base Rate: ₹93.00 / USD</span>
-                            <button type="button" id="exportCsvBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded-lg border border-slate-300 transition">
-                                📥 Export CSV
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3.5 text-sm">
-                        <div class="flex justify-between items-center text-slate-700">
-                            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-slate-400"></span>Gross Invoice Billed:</span>
-                            <span class="font-bold text-slate-900"><span id="outGrossUSD">$0.00</span> (<span id="outGrossINR">₹0</span>)</span>
-                        </div>
-                        <div class="flex justify-between items-center text-slate-700">
-                            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-indigo-500"></span>Platform Commission (<span id="outPlatformPct">0%</span>):</span>
-                            <span class="font-bold text-rose-600">-<span id="outPlatformUSD">$0.00</span> (-<span id="outPlatformINR">₹0</span>)</span>
-                        </div>
-                        <div class="flex justify-between items-center text-slate-700">
-                            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Hidden FX Rate Spread Loss (<span id="outFxPct">0%</span>):</span>
-                            <span class="font-bold text-rose-600">-<span id="outFxUSD">$0.00</span> (-<span id="outFxINR">₹0</span>)</span>
-                        </div>
-                        <div class="flex justify-between items-center text-slate-700">
-                            <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500"></span>Local Tax / TDS Cut:</span>
-                            <span class="font-bold text-amber-600">-<span id="outTaxUSD">$0.00</span> (-<span id="outTaxINR">₹0</span>)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gateway Comparison Table -->
-                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                        <h3 class="font-bold text-slate-900 text-sm">Instant Gateway Payout Comparison</h3>
-                        <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">For Same Invoice</span>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead>
-                                <tr class="text-slate-400 border-b border-slate-100">
-                                    <th class="pb-2 font-semibold">Method</th>
-                                    <th class="pb-2 font-semibold">FX Loss</th>
-                                    <th class="pb-2 font-semibold">Net INR</th>
-                                    <th class="pb-2 font-semibold text-right">Difference</th>
-                                </tr>
-                            </thead>
-                            <tbody id="comparisonTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Smart Recommendation Box -->
-                <div id="smartAffiliateBox" class="bg-gradient-to-r from-emerald-50 via-teal-50 to-white border border-emerald-200 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-                    <div class="flex items-start gap-4">
-                        <div class="p-3 bg-rose-100 text-rose-600 rounded-xl border border-rose-200 shrink-0">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        </div>
-                        <div class="space-y-2">
-                            <h4 class="font-bold text-slate-900 text-sm">
-                                ⚠️ You lose <span id="lossAlertINR" class="text-rose-600 font-black underline decoration-rose-400 underline-offset-4">₹0</span> per payout to FX Markup!
-                            </h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Gateways like PayPal and direct bank wires charge hidden FX margins (2.5%–4%). Switching to mid-market options like <strong class="text-slate-900">Wise</strong> or <strong class="text-slate-900">Skydo</strong> saves up to <strong id="potentialSavingsINR" class="text-emerald-700">₹0</strong> per invoice.
-                            </p>
-                            <div class="pt-2 flex flex-wrap gap-3">
-                                <a href="https://wise.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-md shadow-emerald-600/20">
-                                    <span>Open Wise Account & Save Fees</span>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- SEO Content / FAQs -->
-        <section class="mt-16 border-t border-slate-200 pt-10 text-slate-600 text-sm max-w-5xl mx-auto space-y-6">
-            <h2 class="text-xl font-bold text-slate-900 text-center">Freelancer Fee & Tax Guide (India & Global)</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-900 mb-2">What is Hidden FX Spread?</h3>
-                    <p class="text-xs leading-relaxed text-slate-600">When receiving foreign currency payments, payment providers convert funds using a rate 2%–4% lower than the real Google mid-market exchange rate. That hidden gap is an FX spread fee.</p>
-                </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-900 mb-2">How is Section 194-O TDS Calculated?</h3>
-                    <p class="text-xs leading-relaxed text-slate-600">For Indian remote workers, e-commerce & freelance platforms like Upwork deduct 1% TDS on gross payouts as mandated under Section 194-O. You can claim this back when filing your ITR.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Quick Scenario Buttons -->
-        <section class="mt-12 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto">
-            <h2 class="text-base font-bold text-slate-900 mb-1">Popular Freelancer Fee & FX Scenarios</h2>
-            <p class="text-xs text-slate-500 mb-5">Click any scenario below to load its platform fees, gateway FX spread, and tax rules into the calculator:</p>
-            <div id="pseoPresetGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs"></div>
-        </section>
-
-        <!-- Link to Salary Slabs Page -->
-        <div style="max-width: 860px; margin: 20px auto; padding: 14px 18px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-family: system-ui, -apple-system, sans-serif;">
-          <span style="font-size: 0.95rem; font-weight: 600; color: #0f172a;">
-            Want a quick table of 3 LPA to 15 LPA monthly in-hand estimates?
-          </span>
-          <a href="/salary-slabs.html" style="padding: 8px 14px; background: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600;">
-            View Salary Slabs →
-          </a>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-8 text-xs text-slate-500 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-            <div class="flex flex-wrap justify-center gap-6 font-semibold text-slate-700">
-                <button type="button" onclick="openModal('aboutModal')" class="hover:text-emerald-600 transition">About Us</button>
-                <button type="button" onclick="openModal('howModal')" class="hover:text-emerald-600 transition">How to Use</button>
-                <button type="button" onclick="openModal('privacyModal')" class="hover:text-emerald-600 transition">Privacy Policy</button>
-                <button type="button" onclick="openModal('termsModal')" class="hover:text-emerald-600 transition">Terms & Conditions</button>
-                <button type="button" onclick="openModal('disclaimerModal')" class="hover:text-emerald-600 transition">Disclaimer</button>
-                <a href="/sitemap.xml" class="hover:text-emerald-600 transition">Sitemap</a>
-            </div>
-            <p class="text-[11px] text-slate-400">© 2026 NetTakeHome.engine. All rights reserved. Independent financial calculator utility.</p>
-        </div>
-    </footer>
-
-    <!-- Modals -->
-    <div id="aboutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-lg text-slate-900">About NetTakeHome.engine</h3>
-                <button type="button" onclick="closeModal('aboutModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
-                <p>NetTakeHome.engine is a specialized financial utility built for global freelancers, remote developers, and digital nomads.</p>
-            </div>
-            <div class="pt-2 text-right">
-                <button type="button" onclick="closeModal('aboutModal')" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="howModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-lg text-slate-900">How to Use</h3>
-                <button type="button" onclick="closeModal('howModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
-                <p>Enter invoice size, select your platform and gateway to view precise net take-home earnings instantly.</p>
-            </div>
-            <div class="pt-2 text-right">
-                <button type="button" onclick="closeModal('howModal')" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="privacyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-lg text-slate-900">Privacy Policy</h3>
-                <button type="button" onclick="closeModal('privacyModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
-                <p>All calculations happen client-side in your browser. No personal financial data is stored.</p>
-            </div>
-            <div class="pt-2 text-right">
-                <button type="button" onclick="closeModal('privacyModal')" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="termsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white max-w-2xl w-full rounded-2xl p-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-lg text-slate-900">Terms & Conditions</h3>
-                <button type="button" onclick="closeModal('termsModal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold
+                const retainedPct = gross > 0 ? Math.max(0, Math.min(100, (res.netForeign / gross) * 100)) : 0;
+                const platPctBar = gross > 0 ? Math.max(0, Math.min(100, (res.platformFee / gross) * 100)) : 0;
+                const fxPctBar = gross > 0 ? Math.max(0, Math.min(10
